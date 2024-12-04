@@ -8,7 +8,7 @@ def rename_files_from_csv(csv_file):
 
     for index, row in df.iterrows():
         old_filename = row[0] + ".csv"
-        new_filename = row[1] + old_filename
+        new_filename = row[1] + row[2] + old_filename
 
         try:
             os.rename("CSV2/" + old_filename, "CSV2/" + new_filename)
