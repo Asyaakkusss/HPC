@@ -1,8 +1,10 @@
 import xgboost as xgb
 import pandas as pd
 import os
+import cupy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score
 
 print(xgb.__version__)
 
@@ -25,7 +27,15 @@ def load_csvs_to_dict(csv2_path):
             file_path = os.path.join(csv2_path, filename)
             df = pd.read_csv(file_path)
             # only keep the columns ["1", "2", "3"]
-            df = df[["1"]]
+            # df = df[["1"]]
+
+            for col in ["1", "2", "3"]:
+                df[col + " fft"] = np.fft.fft(df[col])
+                # the FFT is a complex number, so we need to split it into real and imaginary parts
+                df[col + " fft real"] = df[col + " fft"].apply(lambda x: x.real)
+                # drop anything iwth imaginary part
+                df = df.drop(columns=[col + " fft"])
+
             key = os.path.splitext(filename)[0]  # Use filename without extension as key
             dataframes[key] = df
     return dataframes
@@ -38,7 +48,7 @@ dataframes_dict = load_csvs_to_dict(csv2_path)
 # Print the keys of the dictionary to verify
 keys = dataframes_dict.keys()
 print(keys)
-print(dataframes_dict["tpehg567"].head())
+print(dataframes_dict["tftpehg567"].head())
 
 
 # get outcomes which is a dictionary of every key with the value of whether or not the baby was premature
@@ -74,15 +84,22 @@ X = combined_df.drop(columns=['record_name'])
 y = labels
 
 # Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
 # Train the gradient boosting model
-model = xgb.XGBClassifier()
+model = xgb.XGBClassifier(device="cuda")
 model.fit(X_train, y_train)
 
 # Make predictions
 y_pred = model.predict(X_test)
 
-# Evaluate the model
+# Evaluate the model accuracy
 accuracy = accuracy_score(y_test, y_pred)
 print(f'Accuracy: {accuracy}')
+
+# Make predictions for AUC
+y_pred_proba = model.predict_proba(X_test)[:, 1]
+
+# Evaluate the model accuracy with AUC
+auc = roc_auc_score(y_test, y_pred_proba)
+print(f'AUC: {auc}')

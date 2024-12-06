@@ -3,7 +3,7 @@ import wfdb
 path = "term-preterm-ehg-database-1.0.1"
 
 record = wfdb.rdrecord(path + '/tpehgdb/tpehg546')
-wfdb.plot_wfdb(record=record)
+# wfdb.plot_wfdb(record=record)
 print(record.__dict__['sig_name'])
 
 
